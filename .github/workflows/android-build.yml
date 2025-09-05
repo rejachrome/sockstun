@@ -32,8 +32,8 @@ jobs:
         # download latest known-good commandlinetools (update URL if needed)
         wget -O cmdline.zip "https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip"
         unzip -q cmdline.zip -d cmdline-tools-temp
-        mkdir -p "${ANDROID_SDK_ROOT}/cmdline-tools/latest"
-        mv cmdline-tools-temp/cmdline-tools/* "${ANDROID_SDK_ROOT}/cmdline-tools/latest/" || true
+        sudo mkdir -p "${ANDROID_SDK_ROOT}/cmdline-tools/latest"
+        sudo mv cmdline-tools-temp/cmdline-tools/* "${ANDROID_SDK_ROOT}/cmdline-tools/latest/" || true
         export PATH="${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin:${ANDROID_SDK_ROOT}/platform-tools:${PATH}"
         # Use sdkmanager with explicit --sdk_root to avoid environment issues
         yes "" | "${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager" --sdk_root="${ANDROID_SDK_ROOT}" "platform-tools" "platforms;android-33" "build-tools;33.0.2" || true
