@@ -33,19 +33,20 @@ jobs:
         distribution: temurin
         java-version: 17
 
-    - name: Setup Android SDK & NDK
-      uses: android-actions/setup-sdk@v2
+    - name: Install Android SDK & NDK (maierj/setup-android)
+      uses: maierj/setup-android@v2
       with:
-        api-level: ${{ env.ANDROID_PLATFORM }}
-        build-tools: ${{ env.ANDROID_BUILD_TOOLS }}
-        ndk: ${{ env.NDK_VERSION }}
-        components: "platform-tools;emulator"
+        api-level: 34
+        build-tools: 34.0.0
+        ndk: 26.3.11579264
 
     - name: Show SDK/NDK info
       run: |
         echo "ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT"
-        ls -la ${ANDROID_SDK_ROOT}
+        ls -la ${ANDROID_SDK_ROOT} || true
         ls -la ${ANDROID_SDK_ROOT}/ndk || true
+        echo "NDK location:"
+        find ${ANDROID_SDK_ROOT} -maxdepth 3 -type d -name "26.3.*" -print || true
 
     - name: Build project (Gradle assembleDebug)
       working-directory: ./app
