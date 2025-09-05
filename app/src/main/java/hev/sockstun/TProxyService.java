@@ -9,9 +9,12 @@
 
 package hev.sockstun;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
@@ -19,12 +22,15 @@ import android.content.Context;
 import android.os.Build;
 import android.os.ParcelFileDescriptor;
 import android.app.Notification;
-import android.app.Notification.Builder;
 import android.app.PendingIntent;
 import android.content.Intent;
 import android.net.VpnService;
 import android.content.pm.PackageManager.NameNotFoundException;
 import android.content.pm.ServiceInfo;
+
+import android.net.ConnectivityManager;
+import android.net.Network;
+import android.net.NetworkRequest;
 
 import androidx.core.app.NotificationCompat;
 
@@ -168,6 +174,9 @@ public class TProxyService extends VpnService {
 		String channelName = "socks5";
 		initNotificationChannel(channelName);
 		createNotification(channelName);
+
+		/* register network callback to watch for tether/hotspot changes */
+		registerNetworkCallback();
 	}
 
 	public void stopService() {
@@ -178,6 +187,9 @@ public class TProxyService extends VpnService {
 
 		/* TProxy */
 		TProxyStopService();
+
+		/* cleanup hotspot routing if present */
+		cleanupHotspotRouting();
 
 		/* VPN */
 		try {
@@ -214,55 +226,120 @@ public class TProxyService extends VpnService {
 			notificationManager.createNotificationChannel(channel);
 		}
 	}
- 
+
     // Add hotspot traffic handling
 	private void setupHotspotRouting() {
-    // Get tethering interface (usually wlan0 for hotspot)
 	    String hotspotInterface = getHotspotInterface();
-    
-	    if (hotspotInterface != null) {
-        // Add iptables rules for traffic forwarding
+
+	    if (hotspotInterface != null && !hotspotInterface.isEmpty()) {
+	        // These commands typically require root. They are executed as simple shell commands here.
 	        executeCommand("ip rule add iif " + hotspotInterface + " lookup 1000");
 	        executeCommand("ip route add default dev tun0 table 1000");
 	        executeCommand("iptables -I FORWARD -o " + hotspotInterface + " -i tun0 -j ACCEPT");
 	        executeCommand("iptables -I FORWARD -i " + hotspotInterface + " -o tun0 -j ACCEPT");
-        	executeCommand("iptables -t nat -I POSTROUTING -o tun0 -j MASQUERADE");
-	    }
-	    }
-
-	private String getHotspotInterface() {
-	    try {
-        // Detect active hotspot interface
-        Process proc = Runtime.getRuntime().exec("su -c 'ip link show'");
-        // Parse output to find wlan0 or similar hotspot interface
-        // Return interface name
-	    } catch (Exception e) {
-        	return null;
+	        executeCommand("iptables -t nat -I POSTROUTING -o tun0 -j MASQUERADE");
 	    }
 	}
 
-private void cleanupHotspotRouting() {
-    // Remove iptables rules and routing entries
-    executeCommand("ip rule del iif wlan0 lookup 1000");
-    executeCommand("ip route del default dev tun0 table 1000");
-    executeCommand("iptables -D FORWARD -o wlan0 -i tun0 -j ACCEPT");
-    executeCommand("iptables -D FORWARD -i wlan0 -o tun0 -j ACCEPT");
-    executeCommand("iptables -t nat -D POSTROUTING -o tun0 -j MASQUERADE");
+	private String getHotspotInterface() {
+	    try {
+	        // Use ip -o link to get one-line-per-interface output
+	        Process proc = Runtime.getRuntime().exec(new String[] { "sh", "-c", "ip -o link" });
+	        InputStream is = proc.getInputStream();
+	        BufferedReader br = new BufferedReader(new InputStreamReader(is));
+	        String line;
+	        while ((line = br.readLine()) != null) {
+	            // typical line: "3: wlan0: <...> mtu 1500 ..."
+	            String[] parts = line.split(":");
+	            if (parts.length >= 2) {
+	                String ifname = parts[1].trim();
+	                // Heuristics: hotspot/tether interfaces often contain wlan, ap, rndis, tether
+	                String lname = ifname.toLowerCase();
+	                if (lname.startsWith("wlan") || lname.startsWith("ap") || lname.contains("tether") || lname.contains("rndis")) {
+	                    // Return first candidate
+	                    proc.destroy();
+	                    return ifname;
+	                }
+	            }
+	        }
+	        br.close();
+	        proc.waitFor();
+	    } catch (Exception e) {
+	        // ignore and return null
+	    }
+	    return null;
+	}
+
+	private void cleanupHotspotRouting() {
+	    // Remove iptables rules and routing entries; try multiple common iface names
+	    String[] candidates = new String[] { "wlan0", "ap0", "rndis0" };
+	    for (String iface : candidates) {
+	        executeCommand("ip rule del iif " + iface + " lookup 1000");
+	        executeCommand("iptables -D FORWARD -o " + iface + " -i tun0 -j ACCEPT");
+	        executeCommand("iptables -D FORWARD -i " + iface + " -o tun0 -j ACCEPT");
+	    }
+	    executeCommand("ip route del default dev tun0 table 1000");
+	    executeCommand("iptables -t nat -D POSTROUTING -o tun0 -j MASQUERADE");
+	}
+
+	private int executeCommand(String cmd) {
+	    Process proc = null;
+	    try {
+	        // Try with su if available (comment/uncomment depending on environment)
+	        // proc = Runtime.getRuntime().exec(new String[] { "su", "-c", cmd });
+	        proc = Runtime.getRuntime().exec(new String[] { "sh", "-c", cmd });
+	        InputStream is = proc.getInputStream();
+	        InputStream es = proc.getErrorStream();
+	        // consume streams to avoid blocking
+	        consumeStream(is);
+	        consumeStream(es);
+	        int rc = proc.waitFor();
+	        return rc;
+	    } catch (Exception e) {
+	        e.printStackTrace();
+	        if (proc != null) proc.destroy();
+	        return -1;
+	    }
+	}
+
+	private void consumeStream(final InputStream stream) {
+	    if (stream == null) return;
+	    new Thread(() -> {
+	        try (BufferedReader br = new BufferedReader(new InputStreamReader(stream))) {
+	            while (br.readLine() != null) { /* consume */ }
+	        } catch (IOException ignored) { }
+	    }).start();
 	}
 
 	private void registerNetworkCallback() {
 	    ConnectivityManager cm = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
-	    NetworkRequest.Builder builder = new NetworkRequest.Builder();
-    
-	    cm.registerNetworkCallback(builder.build(), new ConnectivityManager.NetworkCallback() {
-        	@Override
-        public void onAvailable(Network network) {
-            // Check if hotspot is active and update routing
-            if (isHotspotActive()) {
-                setupHotspotRouting();
-            }
-        }
-    });
-}
+	    if (cm == null) return;
 
+	    NetworkRequest.Builder builder = new NetworkRequest.Builder();
+	    try {
+	        cm.registerNetworkCallback(builder.build(), new ConnectivityManager.NetworkCallback() {
+	            @Override
+	            public void onAvailable(Network network) {
+	                // Check if hotspot is active and update routing
+	                if (isHotspotActive()) {
+	                    setupHotspotRouting();
+	                }
+	            }
+
+	            @Override
+	            public void onLost(Network network) {
+	                // cleanup when network lost
+	                cleanupHotspotRouting();
+	            }
+	        });
+	    } catch (SecurityException | IllegalArgumentException e) {
+	        // ignore registration failure on some platforms
+	    }
+	}
+
+	private boolean isHotspotActive() {
+	    // Simple check: if we can find a hotspot-like interface, assume hotspot active
+	    String iface = getHotspotInterface();
+	    return iface != null && !iface.isEmpty();
+	}
 }
