@@ -2,9 +2,9 @@ name: Android CI (build native + APK)
 
 on:
   push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
+    branches:
+      - hotspot-vpn-compat
+  workflow_dispatch: {}
 
 jobs:
   build:
