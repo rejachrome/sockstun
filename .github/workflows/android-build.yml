@@ -10,10 +10,10 @@ jobs:
   build:
     runs-on: ubuntu-latest
     env:
-      ANDROID_SDK_ROOT: /usr/local/android-sdk
+      ANDROID_SDK_ROOT: ${{ runner.temp }}/android-sdk
       NDK_VERSION: 26.3.11579264
       ANDROID_BUILD_TOOLS: 34.0.0
-      ANDROID_PLATFORM: android-34
+      ANDROID_PLATFORM: 34
 
     steps:
     - name: Checkout repo
@@ -33,20 +33,34 @@ jobs:
         distribution: temurin
         java-version: 17
 
-    - name: Install Android SDK & NDK (maierj/setup-android)
-      uses: maierj/setup-android@v2
-      with:
-        api-level: 34
-        build-tools: 34.0.0
-        ndk: 26.3.11579264
+    - name: Install Android SDK command-line tools
+      run: |
+        set -e
+        mkdir -p "${ANDROID_SDK_ROOT}"
+        cd "${ANDROID_SDK_ROOT}"
+        curl -fsSL "https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip" -o cmdline-tools.zip
+        unzip -q cmdline-tools.zip
+        rm cmdline-tools.zip
+        mkdir -p cmdline-tools/latest
+        mv cmdline-tools/* cmdline-tools/latest/ || true
+        yes | "${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager" --sdk_root="${ANDROID_SDK_ROOT}" "platform-tools" "platforms;android-${ANDROID_PLATFORM}" "build-tools;${ANDROID_BUILD_TOOLS}" "ndk;${NDK_VERSION}" >/dev/null
+
+    - name: Set ANDROID_HOME and add tools to PATH
+      run: |
+        echo "ANDROID_SDK_ROOT=${ANDROID_SDK_ROOT}" >> $GITHUB_ENV
+        echo "${ANDROID_SDK_ROOT}/platform-tools" >> $GITHUB_PATH
+        echo "${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin" >> $GITHUB_PATH
+        echo "${ANDROID_SDK_ROOT}/ndk/${NDK_VERSION}" >> $GITHUB_PATH
+        # Also expose ANDROID_NDK_HOME for ndk-build
+        echo "ANDROID_NDK_HOME=${ANDROID_SDK_ROOT}/ndk/${NDK_VERSION}" >> $GITHUB_ENV
 
     - name: Show SDK/NDK info
       run: |
         echo "ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT"
-        ls -la ${ANDROID_SDK_ROOT} || true
-        ls -la ${ANDROID_SDK_ROOT}/ndk || true
-        echo "NDK location:"
-        find ${ANDROID_SDK_ROOT} -maxdepth 3 -type d -name "26.3.*" -print || true
+        ls -la "${ANDROID_SDK_ROOT}" || true
+        ls -la "${ANDROID_SDK_ROOT}/ndk" || true
+        ls -la "${ANDROID_SDK_ROOT}/ndk/${NDK_VERSION}" || true
+        "${ANDROID_SDK_ROOT}/ndk/${NDK_VERSION}/ndk-build" --version || true
 
     - name: Build project (Gradle assembleDebug)
       working-directory: ./app
@@ -55,6 +69,7 @@ jobs:
         ./gradlew clean assembleDebug --no-daemon --stacktrace
       env:
         ANDROID_SDK_ROOT: ${{ env.ANDROID_SDK_ROOT }}
+        ANDROID_NDK_HOME: ${{ env.ANDROID_NDK_HOME }}
 
     - name: List jniLibs and APK
       run: |
