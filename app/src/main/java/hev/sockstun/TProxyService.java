@@ -216,30 +216,30 @@ public class TProxyService extends VpnService {
 	}
  
     // Add hotspot traffic handling
-private void setupHotspotRouting() {
+	private void setupHotspotRouting() {
     // Get tethering interface (usually wlan0 for hotspot)
-    String hotspotInterface = getHotspotInterface();
+	    String hotspotInterface = getHotspotInterface();
     
-    if (hotspotInterface != null) {
+	    if (hotspotInterface != null) {
         // Add iptables rules for traffic forwarding
-        executeCommand("ip rule add iif " + hotspotInterface + " lookup 1000");
-        executeCommand("ip route add default dev tun0 table 1000");
-        executeCommand("iptables -I FORWARD -o " + hotspotInterface + " -i tun0 -j ACCEPT");
-        executeCommand("iptables -I FORWARD -i " + hotspotInterface + " -o tun0 -j ACCEPT");
-        executeCommand("iptables -t nat -I POSTROUTING -o tun0 -j MASQUERADE");
-    }
-    }
+	        executeCommand("ip rule add iif " + hotspotInterface + " lookup 1000");
+	        executeCommand("ip route add default dev tun0 table 1000");
+	        executeCommand("iptables -I FORWARD -o " + hotspotInterface + " -i tun0 -j ACCEPT");
+	        executeCommand("iptables -I FORWARD -i " + hotspotInterface + " -o tun0 -j ACCEPT");
+        	executeCommand("iptables -t nat -I POSTROUTING -o tun0 -j MASQUERADE");
+	    }
+	    }
 
-private String getHotspotInterface() {
-    try {
+	private String getHotspotInterface() {
+	    try {
         // Detect active hotspot interface
         Process proc = Runtime.getRuntime().exec("su -c 'ip link show'");
         // Parse output to find wlan0 or similar hotspot interface
         // Return interface name
-    } catch (Exception e) {
-        return null;
-    }
-}
+	    } catch (Exception e) {
+        	return null;
+	    }
+	}
 
 private void cleanupHotspotRouting() {
     // Remove iptables rules and routing entries
@@ -248,14 +248,14 @@ private void cleanupHotspotRouting() {
     executeCommand("iptables -D FORWARD -o wlan0 -i tun0 -j ACCEPT");
     executeCommand("iptables -D FORWARD -i wlan0 -o tun0 -j ACCEPT");
     executeCommand("iptables -t nat -D POSTROUTING -o tun0 -j MASQUERADE");
-}
+	}
 
-private void registerNetworkCallback() {
-    ConnectivityManager cm = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
-    NetworkRequest.Builder builder = new NetworkRequest.Builder();
+	private void registerNetworkCallback() {
+	    ConnectivityManager cm = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+	    NetworkRequest.Builder builder = new NetworkRequest.Builder();
     
-    cm.registerNetworkCallback(builder.build(), new ConnectivityManager.NetworkCallback() {
-        @Override
+	    cm.registerNetworkCallback(builder.build(), new ConnectivityManager.NetworkCallback() {
+        	@Override
         public void onAvailable(Network network) {
             // Check if hotspot is active and update routing
             if (isHotspotActive()) {
