@@ -1,57 +1,69 @@
-name: Build debug APK (use runner SDK)
+name: Android CI (build native + APK)
 
 on:
   push:
-    branches:
-      - hotspot-vpn-compat
-  workflow_dispatch: {}
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
 
 jobs:
   build:
     runs-on: ubuntu-latest
     env:
-      JAVA_HOME: /opt/hostedtoolcache/Java_Azul_jdk/17.0.*/x64
+      ANDROID_SDK_ROOT: /usr/local/android-sdk
+      NDK_VERSION: 26.3.11579264
+      ANDROID_BUILD_TOOLS: 34.0.0
+      ANDROID_PLATFORM: android-34
 
     steps:
-    - name: Checkout
+    - name: Checkout repo
       uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
 
-    - name: Set up JDK 17
+    - name: Clone native hev-socks5-tunnel into app/src/main/jni
+      run: |
+        rm -rf app/src/main/jni || true
+        mkdir -p app/src/main
+        git clone --recursive https://github.com/heiher/hev-socks5-tunnel app/src/main/jni
+
+    - name: Setup Java
       uses: actions/setup-java@v4
       with:
-        distribution: 'temurin'
-        java-version: '17'
+        distribution: temurin
+        java-version: 17
 
-    - name: Use runner Android SDK (/usr/local/lib/android/sdk)
+    - name: Setup Android SDK & NDK
+      uses: android-actions/setup-sdk@v2
+      with:
+        api-level: ${{ env.ANDROID_PLATFORM }}
+        build-tools: ${{ env.ANDROID_BUILD_TOOLS }}
+        ndk: ${{ env.NDK_VERSION }}
+        components: "platform-tools;emulator"
+
+    - name: Show SDK/NDK info
       run: |
-        # Point Android variables to the runner-installed SDK
-        echo "ANDROID_HOME=/usr/local/lib/android/sdk" >> $GITHUB_ENV
-        echo "ANDROID_SDK_ROOT=/usr/local/lib/android/sdk" >> $GITHUB_ENV
-        # Add common SDK tool locations if they exist
-        if [ -d "/usr/local/lib/android/sdk/platform-tools" ]; then
-          echo "/usr/local/lib/android/sdk/platform-tools" >> $GITHUB_PATH
-        fi
-        if [ -d "/usr/local/lib/android/sdk/cmdline-tools/latest/bin" ]; then
-          echo "/usr/local/lib/android/sdk/cmdline-tools/latest/bin" >> $GITHUB_PATH
-        elif [ -d "/usr/local/lib/android/sdk/tools/bin" ]; then
-          echo "/usr/local/lib/android/sdk/tools/bin" >> $GITHUB_PATH
-        fi
-        # Print a short check
-        echo "ANDROID_HOME and ANDROID_SDK_ROOT set to /usr/local/lib/android/sdk"
-        ls -la /usr/local/lib/android/sdk || true
-      shell: bash
+        echo "ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT"
+        ls -la ${ANDROID_SDK_ROOT}
+        ls -la ${ANDROID_SDK_ROOT}/ndk || true
 
-    - name: Grant execute to gradlew
-      run: chmod +x ./gradlew
+    - name: Build project (Gradle assembleDebug)
+      working-directory: ./app
+      run: |
+        chmod +x gradlew
+        ./gradlew clean assembleDebug --no-daemon --stacktrace
+      env:
+        ANDROID_SDK_ROOT: ${{ env.ANDROID_SDK_ROOT }}
 
-    - name: Show env (debug)
-      run: env | grep -E 'ANDROID|JAVA' || true
-
-    - name: Build debug APK
-      run: ./gradlew assembleDebug --no-daemon --info
+    - name: List jniLibs and APK
+      run: |
+        echo "Built native libs (app/src/main/jniLibs):"
+        ls -R app/src/main/jniLibs || true
+        echo "APK files:"
+        ls -R app/build/outputs/apk || true
 
     - name: Upload APK artifact
       uses: actions/upload-artifact@v4
       with:
         name: app-debug-apk
-        path: app/build/outputs/apk/debug/*.apk
+        path: app/build/outputs/apk/debug/app-debug.apk
