@@ -43,22 +43,18 @@ jobs:
         printf "%s\n" "y" | "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" --sdk_root="${ANDROID_HOME}" --licenses || true
       shell: bash
 
-    - name: Set ANDROID_HOME and PATH
+    - name: Force ANDROID_HOME and unset ANDROID_SDK_ROOT
       run: |
         echo "ANDROID_HOME=$HOME/android-sdk" >> $GITHUB_ENV
+        echo "ANDROID_SDK_ROOT=" >> $GITHUB_ENV
         echo "$HOME/android-sdk/platform-tools" >> $GITHUB_PATH
         echo "$HOME/android-sdk/cmdline-tools/latest/bin" >> $GITHUB_PATH
-
-    - name: Ensure no conflicting vars
-      run: |
-        # Remove ANDROID_SDK_ROOT if present to avoid Gradle conflicts
-        unset ANDROID_SDK_ROOT || true
 
     - name: Grant execute to gradlew
       run: chmod +x ./gradlew
 
     - name: Build debug APK
-      run: ./gradlew assembleDebug --no-daemon --info
+      run: ./gradlew assembleDebug --no-daemon --debug
 
     - name: Upload APK artifact
       uses: actions/upload-artifact@v4
