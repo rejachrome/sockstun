@@ -19,6 +19,9 @@ import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.Toast;
 import android.net.VpnService;
+import android.widget.Switch;
+import android.widget.CompoundButton;
+
 
 public class MainActivity extends Activity implements View.OnClickListener {
 	private Preferences prefs;
@@ -58,6 +61,45 @@ public class MainActivity extends Activity implements View.OnClickListener {
 		button_apps = (Button) findViewById(R.id.apps);
 		button_save = (Button) findViewById(R.id.save);
 		button_control = (Button) findViewById(R.id.control);
+
+		// initialize Accept hotspot clients switch
+		try {
+    		Switch hotspotSwitch = findViewById(R.id.switch_accept_hotspot);
+    		if (hotspotSwitch != null) {
+        	hotspotSwitch.setChecked(Preferences.getAcceptHotspotClients(this));
+        	hotspotSwitch.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            	@Override
+            	public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                Preferences.setAcceptHotspotClients(MainActivity.this, isChecked);
+                Toast.makeText(MainActivity.this,
+                    "Accept hotspot clients: " + (isChecked ? "ON" : "OFF"),
+                    Toast.LENGTH_SHORT).show();
+            	}
+        	});
+    		}
+		} catch (Exception e) {
+   		 // view not present or other error; safe to ignore in minimal layouts
+    		e.printStackTrace();
+		}
+
+		try {
+		Switch diagSwitch = findViewById(R.id.switch_diagnostics);
+    		if (diagSwitch != null) {
+        	diagSwitch.setChecked(Preferences.getDiagnosticsEnabled(this));
+        	diagSwitch.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            	@Override
+            	public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                Preferences.setDiagnosticsEnabled(MainActivity.this, isChecked);
+                Toast.makeText(MainActivity.this,
+                    "Diagnostics: " + (isChecked ? "ON" : "OFF"),
+                    Toast.LENGTH_SHORT).show();
+            	}
+        	});
+    		}
+		} catch (Exception e) {
+    		e.printStackTrace();
+		}
+
 
 		checkbox_udp_in_tcp.setOnClickListener(this);
 		checkbox_remote_dns.setOnClickListener(this);
