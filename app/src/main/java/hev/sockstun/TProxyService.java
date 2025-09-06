@@ -13,6 +13,9 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 
+import androidx.annotation.RequiresApi;
+import java.util.Set;
+import android.content.pm.PackageManager;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.content.Context;
@@ -23,13 +26,11 @@ import android.app.Notification.Builder;
 import android.app.PendingIntent;
 import android.content.Intent;
 import android.net.VpnService;
-import android.content.pm.PackageManager.NameNotFoundException;
 import android.content.pm.ServiceInfo;
 import android.net.ConnectivityManager;
 import android.net.Network;
 import android.net.NetworkCapabilities;
 import android.net.NetworkRequest;
-import android.os.Build;
 
 import androidx.core.app.NotificationCompat;
 
