@@ -123,6 +123,24 @@
 				android:layout_height="wrap_content"
 				android:layout_weight="1"
 				android:text="@string/apps"/>
+			<!-- Add inside the root layout (e.g., LinearLayout / RelativeLayout) -->
+			<Switch
+				android:id="@+id/switch_accept_hotspot"
+				android:layout_width="match_parent"
+    				android:layout_height="wrap_content"
+    				android:text="Accept hotspot clients"
+    				android:checked="false"
+    				android:layout_margin="8dp" />
+
+			<!-- Optional: Diagnostics switch -->
+			<Switch
+    				android:id="@+id/switch_diagnostics"
+    				android:layout_width="match_parent"
+    				android:layout_height="wrap_content"
+    				android:text="Diagnostics (log interfaces & routes)"
+			 	android:checked="true"
+    				android:layout_margin="8dp" />
+
 		</LinearLayout>
 		<LinearLayout
 			android:orientation="horizontal"
