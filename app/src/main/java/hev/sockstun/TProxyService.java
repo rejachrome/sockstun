@@ -226,24 +226,29 @@ public void startService() {
 		createNotification(channelName);
 	}
 
-	public void stopService() {
-		if (tunFd == null)
-		  return;
+public void stopService() {
+    if (tunFd == null)
+        return;
 
-		stopForeground(true);
+    stopForeground(true);
+    
+    // Cleanup network callbacks
+    cleanupNetworkCallbacks();
 
-		/* TProxy */
-		TProxyStopService();
+    /* TProxy */
+    TProxyStopService();
 
-		/* VPN */
-		try {
-			tunFd.close();
-		} catch (IOException e) {
-		}
-		tunFd = null;
+    /* VPN */
+    try {
+        tunFd.close();
+    } catch (IOException e) {
+        // Handle error
+    }
+    tunFd = null;
 
-		System.exit(0);
-	}
+    System.exit(0);
+}
+
 
 private void configurePerAppProxy(VpnService.Builder builder, Preferences prefs) {
     String selfPackageName = getApplicationContext().getPackageName();
