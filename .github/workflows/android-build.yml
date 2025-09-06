@@ -3,7 +3,7 @@ name: Build debug APK (use runner SDK)
 on:
   push:
     branches:
-      - hotspot-vpn-compat
+      - perp-hotspot
   workflow_dispatch: {}
 
 jobs:
