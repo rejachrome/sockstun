@@ -13,6 +13,7 @@ import java.util.Set;
 import java.util.HashSet;
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.preference.PreferenceManager;
 
 public class Preferences
 {
@@ -30,6 +31,12 @@ public class Preferences
 	public static final String REMOTE_DNS = "RemoteDNS";
 	public static final String APPS = "Apps";
 	public static final String ENABLE = "Enable";
+        private static final String KEY_ACCEPT_HOTSPOT = "accept_hotspot_clients";
+	private static final String KEY_DIAGNOSTICS = "diagnostics_enabled";
+
+    	public static void setAcceptHotspotClients(Context ctx, boolean enabled) {
+        SharedPreferences p = PreferenceManager.getDefaultSharedPreferences(ctx);
+        p.edit().putBoolean(KEY_ACCEPT_HOTSPOT, enabled).apply();
 
 	private SharedPreferences prefs;
 
