@@ -22,6 +22,13 @@ jobs:
         distribution: 'temurin'
         java-version: '17'
 
+    - name: Clone native hev-socks5-tunnel into app/src/main/jni
+      run: |
+        rm -rf app/src/main/jni || true
+        mkdir -p app/src/main
+        git clone --recursive https://github.com/heiher/hev-socks5-tunnel app/src/main/jni
+      shell: bash
+
     - name: Use runner Android SDK (/usr/local/lib/android/sdk)
       run: |
         # Point Android variables to the runner-installed SDK
@@ -48,10 +55,24 @@ jobs:
       run: env | grep -E 'ANDROID|JAVA' || true
 
     - name: Build debug APK
-      run: ./gradlew assembleDebug --no-daemon --info
+      run: ./gradlew :app:clean :app:assembleDebug --no-daemon --info
+      env:
+        ANDROID_HOME: /usr/local/lib/android/sdk
+        ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
+
+    - name: List produced native libs and APK
+      run: |
+        echo "jniLibs in APK packaging folder (app/src/main/jniLibs):"
+        ls -R app/src/main/jniLibs || true
+        echo "Built libs under app/build:"
+        find app/build -name "libhev-socks5-tunnel.so" -print || true
+        echo "APK files:"
+        ls -R app/build/outputs/apk || true
+      shell: bash
 
     - name: Upload APK artifact
       uses: actions/upload-artifact@v4
       with:
         name: app-debug-apk
         path: app/build/outputs/apk/debug/*.apk
+
