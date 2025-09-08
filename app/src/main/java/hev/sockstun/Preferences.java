@@ -30,6 +30,7 @@ public class Preferences
 	public static final String REMOTE_DNS = "RemoteDNS";
 	public static final String APPS = "Apps";
 	public static final String ENABLE = "Enable";
+	public static final String BYPASSED_APPS = "BypassedApps";
 
 	private SharedPreferences prefs;
 
@@ -151,14 +152,23 @@ public class Preferences
 		editor.commit();
 	}
 
+	public Set<String> getBypassedApps() {
+		return prefs.getStringSet(BYPASSED_APPS, new HashSet<String>());
+	}
+
+	public void setBypassedApps(Set<String> apps) {
+		SharedPreferences.Editor editor = prefs.edit();
+		editor.putStringSet(BYPASSED_APPS, apps);
+		editor.commit();
+	}
+
+	// Keep legacy getApps/setApps for compatibility but delegate to bypassed apps
 	public Set<String> getApps() {
-		return prefs.getStringSet(APPS, new HashSet<String>());
+		return getBypassedApps();
 	}
 
 	public void setApps(Set<String> apps) {
-		SharedPreferences.Editor editor = prefs.edit();
-		editor.putStringSet(APPS, apps);
-		editor.commit();
+		setBypassedApps(apps);
 	}
 
 	public boolean getEnable() {
