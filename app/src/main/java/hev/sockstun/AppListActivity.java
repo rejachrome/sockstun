@@ -80,7 +80,7 @@ public class AppListActivity extends ListActivity {
 		getListView().setChoiceMode(ListView.CHOICE_MODE_MULTIPLE);
 
 		prefs = new Preferences(this);
-		Set<String> apps = prefs.getApps();
+		Set<String> apps = prefs.getBypassedApps();
 		PackageManager pm = getPackageManager();
 		AppArrayAdapter adapter = new AppArrayAdapter(this);
 
@@ -112,15 +112,15 @@ public class AppListActivity extends ListActivity {
 	protected void onDestroy() {
 		if (isChanged) {
 			AppArrayAdapter adapter = (AppArrayAdapter) getListView().getAdapter();
-			Set<String> apps = new HashSet<String>();
+			Set<String> bypassedApps = new HashSet<String>();
 
 			for (int i = 0; i < adapter.getCount(); i++) {
 				Package pkg = adapter.getItem(i);
 				if (pkg.selected)
-				  apps.add(pkg.info.packageName);
+				  bypassedApps.add(pkg.info.packageName);
 			}
 
-			prefs.setApps(apps);
+			prefs.setBypassedApps(bypassedApps);
 		}
 
 		super.onDestroy();
