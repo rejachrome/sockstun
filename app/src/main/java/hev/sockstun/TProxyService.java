@@ -99,25 +99,25 @@ public class TProxyService extends VpnService {
 		if (prefs.getRemoteDns()) {
 			builder.addDnsServer(prefs.getMappedDns());
 		}
-		boolean disallowSelf = true;
+		
+		// Always disallow self to prevent loops
+		String selfName = getApplicationContext().getPackageName();
+		try {
+			builder.addDisallowedApplication(selfName);
+		} catch (NameNotFoundException e) {
+		}
+		
 		if (prefs.getGlobal()) {
 			session += "/Global";
 		} else {
-			for (String appName : prefs.getApps()) {
+			// Add bypassed apps (apps that should NOT use the VPN)
+			for (String appName : prefs.getBypassedApps()) {
 				try {
-					builder.addAllowedApplication(appName);
-					disallowSelf = false;
+					builder.addDisallowedApplication(appName);
 				} catch (NameNotFoundException e) {
 				}
 			}
-			session += "/per-App";
-		}
-		if (disallowSelf) {
-			String selfName = getApplicationContext().getPackageName();
-			try {
-				builder.addDisallowedApplication(selfName);
-			} catch (NameNotFoundException e) {
-			}
+			session += "/Bypass";
 		}
 		builder.setSession(session);
 		tunFd = builder.establish();
